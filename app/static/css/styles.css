@@ -1,0 +1,86 @@
+/* Estilos globales */
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background-color: #f9f9f9;
+}
+
+/* Contenedor de filtros */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #ddd;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.filters label {
+  font-weight: bold;
+  margin-right: 5px;
+  white-space: nowrap; /* Evitar que las etiquetas se rompan en varias líneas */
+}
+
+.filters select,
+.filters input {
+  padding: 5px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  transition: border-color 0.3s ease;
+}
+
+.filters select:focus,
+.filters input:focus {
+  border-color: #007bff;
+  outline: none;
+}
+
+/* Mapa */
+#map {
+  height: calc(100vh - 100px); /* Altura dinámica */
+  width: 100%;
+}
+
+/* Popups del mapa */
+.leaflet-popup-content {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.leaflet-popup-content b {
+  color: #007bff;
+}
+
+/* Iconos personalizados en el mapa */
+.custom-icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.custom-icon div {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.custom-icon div:hover {
+  transform: scale(1.2); /* Efecto de escala al pasar el mouse */
+}
+/* Estilo para los marcadores personalizados */
+.custom-marker {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.custom-marker div {
+  transition: transform 0.2s ease;
+}
+
+.custom-marker div:hover {
+  transform: scale(1.2); /* Efecto de escala al pasar el mouse */
+}

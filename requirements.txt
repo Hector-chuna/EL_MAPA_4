@@ -1,0 +1,2 @@
+Flask==2.2.5
+flask-mysql-connector==1.1.0

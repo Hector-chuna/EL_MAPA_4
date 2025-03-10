@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mapa Interactivo</title>
+  <!-- Estilos CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+</head>
+<body>
+  <!-- Filtros -->
+  <div class="filters">
+    <label for="categoria">Categoría:</label>
+    <select id="categoria"></select>
+
+    <label for="estado">Estado:</label>
+    <select id="estado"></select>
+
+    <label for="marca">Marca:</label>
+    <select id="marca"></select>
+
+    <label for="departamento">Departamento:</label>
+    <select id="departamento"></select>
+
+    <label for="ciudad">Ciudad:</label>
+    <select id="ciudad"></select>
+
+    <label for="vendedor">Vendedor:</label>
+    <select id="vendedor"></select>
+
+    <label for="tipo">Tipo:</label>
+    <select id="tipo"></select>
+
+    <label for="anio_inicial">Año Inicial:</label>
+    <select id="anio_inicial"></select>
+
+    <label for="anio_final">Año Final:</label>
+    <select id="anio_final"></select>
+
+    <label for="fecha">Fecha:</label>
+    <input type="date" id="fecha">
+  </div>
+
+  <!-- Mapa -->
+  <div id="map"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!-- JavaScript personalizado -->
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
