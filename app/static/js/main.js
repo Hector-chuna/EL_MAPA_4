@@ -1,4 +1,6 @@
 console.log("main.js cargado.");
+
+// Variables globales
 let map;
 let markers = [];
 let datosFiltrados = [];
@@ -6,50 +8,67 @@ let años = [];
 let marcas = []; // Almacenar todas las marcas recibidas del backend
 let categorias = []; // Almacenar todas las categorías recibidas del backend
 
-// Inicializar el mapa
+// ===========================
+// INICIALIZACIÓN DEL MAPA
+// ===========================
 function initMap() {
+  console.log("Inicializando el mapa...");
   map = L.map("map").setView([-25.3142442882, -57.5792973848], 6); // Coordenadas iniciales
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution: "© OpenStreetMap"
   }).addTo(map);
+  console.log("✅ Mapa inicializado correctamente.");
 }
 
-// Cargar datos desde el backend
+// ===========================
+// CARGAR DATOS DESDE EL BACKEND
+// ===========================
 async function cargarDatos() {
   try {
+    console.log("Cargando datos desde el backend...");
     const response = await fetch("/api/datos");
     if (!response.ok) {
       throw new Error(`Error en la solicitud al backend: ${response.status}`);
     }
     const data = await response.json();
+
     // Validar estructura de los datos
     if (!data || !Array.isArray(data.datos)) {
       throw new Error("Los datos recibidos desde el backend no tienen el formato esperado.");
     }
-    datosFiltrados = data.datos; // Guardar los datos completos
-    años = data.años || []; // Guardar los años únicos
-    marcas = data.marcas || []; // Guardar las marcas
-    categorias = data.categorias || []; // Guardar las categorías
+
+    // Guardar los datos completos
+    datosFiltrados = data.datos;
+    años = data.años || [];
+    marcas = data.marcas || [];
+    categorias = data.categorias || [];
+
     // Poblar los filtros con los datos recibidos
     poblarSelect("categoria", categorias);
     poblarSelect("estado", data.estados);
     poblarSelect("marca", marcas); // Poblar inicialmente con todas las marcas
     poblarSelect("departamento", data.departamentos);
     poblarSelect("ciudad", data.ciudades);
-    poblarSelect("vendedor", data.vendedores);
+    poblarSelect("vendedor", procesarVendedoresUnicos(data.vendedores)); // Usar vendedores únicos
     poblarSelect("tipo", data.tipos);
+
     // Poblar los selectores de año
     poblarSelect("anio_inicial", años.map(año => ({ id: año, descripcion: año })));
     poblarSelect("anio_final", años.map(año => ({ id: año, descripcion: año })));
+
     // Mostrar todos los marcadores inicialmente
     actualizarMapa(datosFiltrados);
-    // Mensaje final de carga
+
     console.log("✅ Datos cargados correctamente.");
   } catch (error) {
     console.error("❌ Error al cargar datos:", error);
   }
 }
+
+// ===========================
+// FUNCIONES AUXILIARES
+// ===========================
 
 // Función auxiliar para poblar un select
 function poblarSelect(idSelect, opciones) {
@@ -58,11 +77,14 @@ function poblarSelect(idSelect, opciones) {
     console.error(`El elemento con ID "${idSelect}" no existe.`);
     return;
   }
+
   // Validar que las opciones sean un array
   if (!Array.isArray(opciones)) {
     console.error(`Datos inválidos para el filtro "${idSelect}":`, opciones);
     return;
   }
+
+  console.log(`Poblando el selector "${idSelect}" con ${opciones.length} opciones...`);
   select.innerHTML = '<option value="todos">Todos</option>';
   opciones.forEach(opcion => {
     if (opcion.id && opcion.descripcion) { // Filtrar valores válidos
@@ -72,10 +94,30 @@ function poblarSelect(idSelect, opciones) {
       select.appendChild(option);
     }
   });
+  console.log(`✅ Selector "${idSelect}" poblado correctamente.`);
 }
 
-// Filtrar datos según los filtros seleccionados
+// Procesar vendedores únicos para evitar duplicados
+function procesarVendedoresUnicos(vendedores) {
+  const vendedoresUnicos = [];
+  const descripcionesVendedores = new Set();
+  vendedores.forEach(vendedor => {
+    if (vendedor.descripcion && !descripcionesVendedores.has(vendedor.descripcion)) {
+      descripcionesVendedores.add(vendedor.descripcion);
+      vendedoresUnicos.push(vendedor);
+    }
+  });
+  return vendedoresUnicos;
+}
+
+// ===========================
+// FILTRADO DE DATOS
+// ===========================
+
+// Aplicar filtros según los valores seleccionados
 function filtrarDatos() {
+  console.log("Aplicando filtros...");
+
   const anioInicial = document.getElementById("anio_inicial").value || null;
   const anioFinal = document.getElementById("anio_final").value || null;
   const categoria = document.getElementById("categoria").value;
@@ -84,8 +126,9 @@ function filtrarDatos() {
   const departamento = document.getElementById("departamento").value;
   const ciudad = document.getElementById("ciudad").value;
   const vendedor = document.getElementById("vendedor").value;
-  const tipo = document.getElementById("tipo").value;
+
   let filtrados = datosFiltrados;
+
   // Aplicar filtros básicos
   if (anioInicial && anioInicial !== "todos") filtrados = filtrados.filter(d => d.AÑO >= parseInt(anioInicial));
   if (anioFinal && anioFinal !== "todos") filtrados = filtrados.filter(d => d.AÑO <= parseInt(anioFinal));
@@ -93,7 +136,7 @@ function filtrarDatos() {
   if (departamento !== "todos") filtrados = filtrados.filter(d => d.ID_DPTO == departamento);
   if (ciudad !== "todos") filtrados = filtrados.filter(d => d.ID_CIUDAD == ciudad);
   if (vendedor !== "todos") filtrados = filtrados.filter(d => d.ID_VEND == vendedor);
-  if (tipo !== "todos") filtrados = filtrados.filter(d => d.ID_TIPO == tipo);
+
   // Filtrar marcas según la categoría seleccionada
   if (categoria && categoria !== "todos") {
     const marcasFiltradas = marcas.filter(marca => marca.ID_CATEGORIA == categoria);
@@ -103,32 +146,36 @@ function filtrarDatos() {
     poblarSelect("marca", marcas); // Restaurar todas las marcas si se selecciona "Todos"
     console.log("Categoría seleccionada: Todos. Todas las marcas restauradas.");
   }
+
   // Actualizar el mapa con los datos filtrados
-  actualizarMapa(filtrados);
+  actualizarMapa(filtrados, categoria, marca, vendedor);
 }
 
-// Función auxiliar para obtener la descripción de un vendedor
-function obtenerDescripcionVendedor(idVendedor) {
-  const vendedor = datosFiltrados.find(d => d.ID_VEND == idVendedor);
-  return vendedor ? vendedor.DESCRIPCION_VEND : "Sin descripción";
-}
+// ===========================
+// ACTUALIZACIÓN DEL MAPA
+// ===========================
 
-// Actualizar el mapa con los datos filtrados
-function actualizarMapa(datos) {
+function actualizarMapa(datos, categoriaSeleccionada, marcaSeleccionada, vendedorSeleccionado) {
+  console.log("Actualizando el mapa...");
+
   // Limpiar marcadores anteriores
   markers.forEach(marker => map.removeLayer(marker));
   markers = [];
+
   // Filtrar puntos con coordenadas válidas
   const puntosConCoordenadas = datos.filter(p => p.LATITUD && p.LONGITUD);
+  console.log(`Se encontraron ${puntosConCoordenadas.length} puntos con coordenadas válidas.`);
+
   // Definir colores por estado
   const coloresPorEstado = {
     1: "green",   // Activo
     2: "yellow",  // Inactivo
     3: "red"      // Bloqueado
   };
-  // Obtener la marca seleccionada
-  const marcaSeleccionada = document.getElementById("marca").value;
+
+  // Contador para puntos azules y puntos rosas
   let puntosAzules = 0;
+  let puntosRosas = 0;
 
   // Agregar nuevos marcadores
   puntosConCoordenadas.forEach(punto => {
@@ -136,60 +183,59 @@ function actualizarMapa(datos) {
     const estadoNum = Number(punto.ID_ESTADO) || 0; // Convertir a número
     let color = coloresPorEstado[estadoNum] || "blue"; // Color predeterminado si no hay coincidencia
 
-    // Procesar los detalles de ventas (DETALLES_VENTAS)
-    const ventas = punto.DETALLES_VENTAS || {}; // Datos anidados de ventas
-    const vendedoresUnicos = new Set(); // Para almacenar vendedores únicos
-    const marcasUnicas = new Set(); // Para almacenar marcas únicas
+    // Manejar los detalles de ventas (DETALLES_VENTAS)
+    const ventas = punto.DETALLES_VENTAS || {};
+    let haVendidoMarca = false;
+    let haAtendidoVendedor = false;
 
-    // Extraer vendedores y marcas únicas
-    Object.entries(ventas).forEach(([clave, detalle]) => {
-      // Extraer descripción del vendedor directamente del detalle
-      const descripcionVendedor = detalle.VENDEDOR || "Sin descripción";
-      if (descripcionVendedor) vendedoresUnicos.add(descripcionVendedor);
-      // Extraer marcas
-      const { MARCA } = detalle;
-      if (MARCA) marcasUnicas.add(MARCA);
-    });
-
-    // Cambiar el color a azul si la marca seleccionada está en las marcas únicas
-    if (marcaSeleccionada !== "todos" && marcasUnicas.has(marcaSeleccionada)) {
-      color = "blue";
-      puntosAzules++;
+    // Verificar si el punto ha vendido la marca seleccionada
+    if (marcaSeleccionada && marcaSeleccionada !== "todos") {
+      haVendidoMarca = Object.values(ventas).some(detalle =>
+        detalle.MARCA === marcaSeleccionada
+      );
+      if (haVendidoMarca) {
+        color = "blue"; // Cambiar a azul si el punto ha vendido la marca
+        puntosAzules++; // Incrementar el contador
+      }
     }
 
-    // Construir el contenido del popup
-    let popupContent = `<div style="font-family: Arial, sans-serif; line-height: 1.4; max-width: 250px;">`;
-    popupContent += `<h3 style="margin: 0; font-size: 16px; color: #333;">${punto.DESCRIPCION_CLIENTE}</h3>`;
-    popupContent += `<hr style="border: 0; border-top: 1px solid #ccc; margin: 8px 0;">`;
-    popupContent += `<p style="margin: 4px 0; font-size: 14px;"><strong>Estado:</strong> ${punto.DESCRIPCION_ESTADO}<br>`;
-    popupContent += `<strong>Vendedores:</strong><br>`;
-    // Mostrar la lista de vendedores únicos
-    if (vendedoresUnicos.size > 0) {
-      vendedoresUnicos.forEach(vendedor => {
-        popupContent += `- ${vendedor}<br>`;
-      });
-    } else {
-      popupContent += `- Sin vendedores registrados<br>`;
+    // Verificar si el vendedor seleccionado ha atendido el punto
+    if (vendedorSeleccionado && vendedorSeleccionado !== "todos") {
+      haAtendidoVendedor = Object.values(ventas).some(detalle =>
+        detalle.VENDEDOR === vendedorSeleccionado && detalle.MARCA === marcaSeleccionada
+      );
+      if (haAtendidoVendedor) {
+        color = "pink"; // Cambiar a rosa si el vendedor ha atendido el punto
+        puntosRosas++; // Incrementar el contador
+      } else {
+        return; // No mostrar el punto si no hay coincidencias
+      }
     }
-    // Mostrar la lista de marcas únicas
-    popupContent += `<strong>Marcas:</strong><br>`;
-    if (marcasUnicas.size > 0) {
-      marcasUnicas.forEach(marca => {
-        popupContent += `- ${marca}<br>`;
-      });
-    } else {
-      popupContent += `- Sin marcas registradas<br>`;
-    }
-    popupContent += `</p></div>`;
+
     // Crear un ícono de color personalizado usando leaflet-color-markers
     const icono = L.icon({
       iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${color}.png`,
       shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-      iconSize: [25, 41],       // Tamaño del ícono
-      iconAnchor: [12, 41],     // Punto de anclaje del ícono
-      popupAnchor: [0, -41],    // Punto de anclaje del popup
-      shadowSize: [41, 41]      // Tamaño de la sombra
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [0, -41],
+      shadowSize: [41, 41]
     });
+
+    // Construir el contenido del popup
+    const popupContent = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.4; max-width: 250px;">
+        <h3 style="margin: 0; font-size: 16px; color: #333;">${punto.DESCRIPCION_CLIENTE}</h3>
+        <hr style="border: 0; border-top: 1px solid #ccc; margin: 8px 0;">
+        <p style="margin: 4px 0; font-size: 14px;">
+          <strong>Estado:</strong> ${punto.DESCRIPCION_ESTADO}<br>
+          <strong>Ventas:</strong><br>${Object.entries(ventas).map(([clave, detalle]) => 
+            `<strong>${clave}:</strong> ${detalle.MARCA || "Sin marca"}`
+          ).join("<br>") || "Sin ventas registradas"}
+        </p>
+      </div>
+    `;
+
     // Crear el marcador
     const marker = L.marker([parseFloat(punto.LATITUD), parseFloat(punto.LONGITUD)], { icon: icono })
       .addTo(map)
@@ -197,20 +243,30 @@ function actualizarMapa(datos) {
     markers.push(marker);
   });
 
+  // Mostrar mensaje en la consola
+  if (marcaSeleccionada && marcaSeleccionada !== "todos") {
+    console.log(`Marca seleccionada: ${marcaSeleccionada}. Puntos azules: ${puntosAzules}`);
+  }
+  if (vendedorSeleccionado && vendedorSeleccionado !== "todos") {
+    console.log(`Vendedor seleccionado: ${vendedorSeleccionado}. Puntos rosas: ${puntosRosas}`);
+  }
+
   // Mostrar mensaje si no hay puntos en el mapa
   if (markers.length === 0) {
     alert("No hay puntos de venta que coincidan con los filtros seleccionados.");
   }
-
-  // Punto de control en consola
-  console.log(`Marca seleccionada: ${marcaSeleccionada}. Puntos azules: ${puntosAzules}`);
   console.log("✅ Mapa actualizado correctamente.");
 }
 
-// Inicializar cuando el DOM esté listo
+// ===========================
+// INICIALIZACIÓN DEL DOM
+// ===========================
+
 document.addEventListener("DOMContentLoaded", () => {
+  console.log("DOM cargado. Inicializando...");
   initMap();
   cargarDatos();
+
   // Asignar eventos a los filtros
   document.getElementById("anio_inicial").addEventListener("change", filtrarDatos);
   document.getElementById("anio_final").addEventListener("change", filtrarDatos);
@@ -221,4 +277,6 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("ciudad").addEventListener("change", filtrarDatos);
   document.getElementById("vendedor").addEventListener("change", filtrarDatos);
   document.getElementById("tipo").addEventListener("change", filtrarDatos);
+
+  console.log("✅ Eventos asignados correctamente.");
 });
